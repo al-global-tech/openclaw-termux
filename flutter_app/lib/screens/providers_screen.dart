@@ -59,7 +59,13 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
   String? _prefixedModel(AiProvider provider, Map<String, dynamic>? config) {
     final prefix = '${provider.id}/';
     final active = _activeModel;
-    if (active != null && active.startsWith(prefix)) {
+if (active != null &&
+        active.startsWith(prefix) &&
+        ((config?['models'] as List?) ?? const []).any(
+          (entry) =>
+              entry is Map &&
+              entry['id'] == active.substring(prefix.length),
+        )) {
       return active.substring(prefix.length);
     }
     for (final entry in (config?['models'] as List?) ?? const []) {
