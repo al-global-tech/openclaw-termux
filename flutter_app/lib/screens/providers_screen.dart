@@ -53,6 +53,21 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
     return savedModels.isEmpty ? null : savedModels.first;
   }
 
+  /// The API model ID last saved for a provider whose references are
+  /// `<provider id>/<model>` (explicit api flavour), or null when it has none.
+  /// Another provider's active model is never returned.
+  String? _prefixedModel(AiProvider provider, Map<String, dynamic>? config) {
+    final prefix = '${provider.id}/';
+    final active = _activeModel;
+    if (active != null && active.startsWith(prefix)) {
+      return active.substring(prefix.length);
+    }
+    for (final entry in (config?['models'] as List?) ?? const []) {
+      if (entry is Map && entry['id'] is String) return entry['id'] as String;
+    }
+    return null;
+  }
+
   Future<void> _openProvider(AiProvider provider) async {
     final providerConfig = _providers[provider.id] as Map<String, dynamic>?;
     final result = await Navigator.of(context).push<bool>(
@@ -62,7 +77,9 @@ class _ProvidersScreenState extends State<ProvidersScreen> {
           existingApiKey: providerConfig?['apiKey'] as String?,
           existingModel: provider.id == 'minimax'
               ? _minimaxModel(providerConfig)
-              : _activeModel,
+              : provider.api != null
+                  ? _prefixedModel(provider, providerConfig)
+                  : _activeModel,
         ),
       ),
     );

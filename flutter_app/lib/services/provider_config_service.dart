@@ -74,13 +74,11 @@ class ProviderConfigService {
         (baseUrlOverride != null && baseUrlOverride.trim().isNotEmpty)
             ? _normalizeBaseUrl(provider, baseUrlOverride.trim())
             : provider.baseUrl;
-    // Saved references for providers with an explicit api flavour (MiniMax,
-    // UberLLM) already include the provider prefix. The model entry needs the
-    // API model ID, while the active reference keeps its prefix.
-    final modelId =
-        provider.api != null && model.startsWith('${provider.id}/')
-            ? model.substring(provider.id.length + 1)
-            : model;
+    // Saved MiniMax references already include the provider prefix. The model
+    // entry needs the API model ID, while the active reference keeps its prefix.
+    final modelId = provider.id == 'minimax' && model.startsWith('minimax/')
+        ? model.substring('minimax/'.length)
+        : model;
     // Model refs are provider-qualified for providers with an explicit api
     // flavour (e.g. `ollama/qwen3:8b`).
     final modelRef = provider.api != null ? '${provider.id}/$modelId' : modelId;
@@ -200,6 +198,10 @@ fs.writeFileSync(p, JSON.stringify(c, null, 2));
     // Build a list of this provider's known model names so we can clear
     // the active model if it matches one of them.
     final modelsJson = jsonEncode(provider.knownModels.toList());
+    // Providers with an explicit api flavour save `<id>/<model>` references,
+    // so a custom model is recognized by that prefix.
+    final prefixJson =
+        jsonEncode(provider.api != null ? '${provider.id}/' : null);
 
     final script = '''
 const fs = require("fs");
@@ -210,9 +212,10 @@ if (c.models && c.models.providers) {
   delete c.models.providers[$providerIdJson];
 }
 const known = $modelsJson;
+const prefix = $prefixJson;
 if (c.agents && c.agents.defaults && c.agents.defaults.model) {
   const cur = c.agents.defaults.model.primary;
-  if (cur && known.some(m => cur.includes(m))) {
+  if (cur && ((prefix && cur.startsWith(prefix)) || known.some(m => cur.includes(m)))) {
     delete c.agents.defaults.model.primary;
   }
 }
